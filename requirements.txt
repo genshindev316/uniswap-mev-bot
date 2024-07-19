@@ -1,0 +1,12 @@
+UNISWAP V2 LAUNCH TOKEN BY ENABLE TRADING WITH BUY WALLETS USING MEV
+Details how this work.
+1- Token enable liquidity ABI configurable.
+2- Token amount and eth amount is configurable to provide liquidity.
+3- Multiple buy wallets are configurable.
+4- bot choose random amount for the given range for each wallet to buy tokens.
+5- Max eth spend for each wallet is configurable.
+6- Token address is configurable.
+7- Very important feature. you can testnet network as well instead testing on direct mainnet.
+8- BY runnign the bot , it will build MEV bundle like this way [enable liq tx1, Buy tx1, buy tx2 , etc..]
+9- Bot will send bundle to 12 MEV relay untill bundle succeed.
+10- you will run it through terminal.

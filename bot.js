@@ -1,5 +1,6 @@
 const { Web3 } = require('web3');
-
+const { FlashbotsBundleProvider } = require("@flashbots/ethers-provider-bundle");
+const { ethers } = require("ethers");
 const config = require('./config.json');
 // const { ChainId, Token, TokenAmount, WETH9, TradeType, Percent } = require('@uniswap/sdk-core');
 // const { Pair, Route, Trade, Fetcher } = require("@uniswap/v2-sdk");
@@ -155,6 +156,8 @@ async function submitTransactionsToMEVRelay(bundle) {
   // mevRelayUrls.push(mevRelayUrl1);
   // mevRelayUrls.push(mevRelayUrl2);
   // mevRelayUrls.push(mevRelayUrl3);
+  const flashbotsProvider = await FlashbotsBundleProvider.create(mevRelayUrl1, wallet[0].privateKey)
+  const blockNumber = await flashbotsProvider.getBlockNumber();
 
   const headers = {
     'Content-Type': 'application/json',
@@ -170,9 +173,11 @@ async function submitTransactionsToMEVRelay(bundle) {
   // for(i in mevRelayUrls) {
     try {
       console.log("AAA")
-      const response = await fetch(mevRelayUrl1, requestOptions);
-      const result = await response.json();    
-      console.log('Transactions submitted:', result);
+      // const response = await fetch(mevRelayUrl1, requestOptions);
+      const txs = await flashbotsProvider.sendBundle(bundle, blockNumber + 1);
+      console.log(txs)
+      // const result = await response.json();    
+      // console.log('Transactions submitted:', result);
     } catch (error) {
         console.error('Error submitting transactions:', error);
     };

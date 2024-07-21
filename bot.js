@@ -144,6 +144,7 @@ async function buildMEVBundle() {
 };
 
 async function submitTransactionsToMEVRelay(bundle) {
+  const provider = new ethers.providers.JsonRpcProvider("http://localhost:8545")
   const mevRelayUrl1 = 'https://0xac6e77dfe25ecd6110b8e780608cce0dab71fdd5ebea22a16c0205200f2f8e2e3ad3b71d3499c54ad14d6c21b41a37ae@boost-relay.flashbots.net'; // Replace with actual MEV relay endpoint
   // const mevRelayUrl2 = 'https://0xac6e77dfe25ecd6110b8e780608cce0dab71fdd5ebea22a16c0205200f2f8e2e3ad3b71d3499c54ad14d6c21b41a37ae@boost-relay.flashbots.net';
   // const mevRelayUrl3 = 'https://0xac6e77dfe25ecd6110b8e780608cce0dab71fdd5ebea22a16c0205200f2f8e2e3ad3b71d3499c54ad14d6c21b41a37ae@boost-relay.flashbots.net'; // ..add 12 MEV relays URLs
@@ -156,7 +157,7 @@ async function submitTransactionsToMEVRelay(bundle) {
   // mevRelayUrls.push(mevRelayUrl1);
   // mevRelayUrls.push(mevRelayUrl2);
   // mevRelayUrls.push(mevRelayUrl3);
-  const flashbotsProvider = await FlashbotsBundleProvider.create(mevRelayUrl1, wallet[0].privateKey)
+  const flashbotsProvider = await FlashbotsBundleProvider.create(provider, wallet[0].privateKey, mevRelayUrl1)
   const blockNumber = await flashbotsProvider.getBlockNumber();
 
   const headers = {
@@ -172,7 +173,7 @@ async function submitTransactionsToMEVRelay(bundle) {
 
   // for(i in mevRelayUrls) {
     try {
-      console.log("AAA")
+      console.log("AAA");
       // const response = await fetch(mevRelayUrl1, requestOptions);
       const txs = await flashbotsProvider.sendBundle(bundle, blockNumber + 1);
       console.log(txs)

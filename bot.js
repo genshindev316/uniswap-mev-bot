@@ -6,7 +6,6 @@ const config = require('./config.json');
 // const { Pair, Route, Trade, Fetcher } = require("@uniswap/v2-sdk");
 // const QuoteToken = new Token(ChainId.MAINNET, config.token, 18);
 
-// BSC Testnet
 const HTTP_RPC_PROVIDER_URL = 'wss://ethereum-sepolia-rpc.publicnode.com';
 
 // UNISWAP_V2_ROUTER02_ADDRESS in sepolia test net
@@ -140,7 +139,7 @@ async function buildMEVBundle() {
 
   const blockNumber = await provider.getBlockNumber();
   console.log(blockNumber);
-  
+
   const txs = await flashbotsProvider.sendBundle(bundle, blockNumber + 1);
   
   // transaction which swap token to eth

@@ -7,6 +7,7 @@ const config = require('./config.json');
 // const QuoteToken = new Token(ChainId.MAINNET, config.token, 18);
 
 const HTTP_RPC_PROVIDER_URL = 'wss://ethereum-sepolia-rpc.publicnode.com';
+// const HTTP_RPC_PROVIDER_URL = "https://sepolia.drpc.org";
 
 // UNISWAP_V2_ROUTER02_ADDRESS in sepolia test net
 const UNISWAP_V2_ROUTER02_ADDRESS = "0x86dcd3293C53Cf8EFd7303B57beb2a3F671dDE98";
@@ -17,9 +18,12 @@ const UNISWAP_V2_ROUTER02_ADDRESS = "0x86dcd3293C53Cf8EFd7303B57beb2a3F671dDE98"
 // ABIs for Uniswap v2 Router and ERC20
 const ERC20_ABI = require('./ERC20-ABI.json');
 const UNISWAP_V2_ROUTER02_ABI = require('./unisap-v2-router-abi.json');
+const mevRelayUrl1 = 'https://0xafa4c6985aa049fb79dd37010438cfebeb0f2bd42b115b89dd678dab0670c1de38da0c4e9138c9290a398ecd9a0b3110@boost-relay-sepolia.flashbots.net'; // Replace with actual MEV relay endpoint
 
 const web3 = new Web3(HTTP_RPC_PROVIDER_URL);
 const contractUniswapV2Router02 = new web3.eth.Contract(UNISWAP_V2_ROUTER02_ABI, UNISWAP_V2_ROUTER02_ADDRESS);
+// console.log(FlashbotsBundleProvider)
+// const flashbotsProvider = await FlashbotsBundleProvider.create(provider, wallet[0].privateKey, mevRelayUrl1)
 
 const quoteTokenAddress = config.token;
 const etherTokenAddress = config.etherTokenAddress;
@@ -132,15 +136,15 @@ async function buildMEVBundle() {
     {signedTransaction: signedTx1}
   ];
 
-  // const provider = new ethers.providers.JsonRpcProvider(HTTP_RPC_PROVIDER_URL)
+  // console.log(ethers)
+  // const provider = new ethers.providers.JsonRpcProvider('wss://ethereum-sepolia-rpc.publicnode.com')
   // c406845e8a3e4e97ae20c76ffdd7cd7b
   // https://sepolia.infura.io/v3/c406845e8a3e4e97ae20c76ffdd7cd7b
-  const provider = new ethers.providers.InfuraProvider("https://sepolia.infura.io/v3/c406845e8a3e4e97ae20c76ffdd7cd7b");
+  // const provider = await web3.eth.providers.InfuraProvider("https://sepolia.infura.io/v3/c406845e8a3e4e97ae20c76ffdd7cd7b");
 
-  const blockNumber = await provider.getBlockNumber();
-  console.log(blockNumber);
-
-  const txs = await flashbotsProvider.sendBundle(bundle, blockNumber + 1);
+  const blockNumber = await web3.eth.getBlockNumber();
+  const txs = await FlashbotsBundleProvider.sendBundle(bundle, blockNumber + 1);
+  console.log(txs)
   
   // transaction which swap token to eth
   // const {swapTx2, Tx2} = await swapQuotedTokensForETH(wallet[1].address);
@@ -163,8 +167,8 @@ async function buildMEVBundle() {
 };
 
 async function submitTransactionsToMEVRelay(bundle) {
-  const provider = new ethers.providers.JsonRpcProvider("http://localhost:8545")
-  const mevRelayUrl1 = 'https://0xafa4c6985aa049fb79dd37010438cfebeb0f2bd42b115b89dd678dab0670c1de38da0c4e9138c9290a398ecd9a0b3110@boost-relay-sepolia.flashbots.net'; // Replace with actual MEV relay endpoint
+  // const provider = new ethers.providers.JsonRpcProvider("http://localhost:8545")
+  // const mevRelayUrl1 = 'https://0xafa4c6985aa049fb79dd37010438cfebeb0f2bd42b115b89dd678dab0670c1de38da0c4e9138c9290a398ecd9a0b3110@boost-relay-sepolia.flashbots.net'; // Replace with actual MEV relay endpoint
   // const mevRelayUrl2 = 'https://0xac6e77dfe25ecd6110b8e780608cce0dab71fdd5ebea22a16c0205200f2f8e2e3ad3b71d3499c54ad14d6c21b41a37ae@boost-relay.flashbots.net';
   // const mevRelayUrl3 = 'https://0xac6e77dfe25ecd6110b8e780608cce0dab71fdd5ebea22a16c0205200f2f8e2e3ad3b71d3499c54ad14d6c21b41a37ae@boost-relay.flashbots.net'; // ..add 12 MEV relays URLs
   // const mevRelayUrls = [];
@@ -176,7 +180,7 @@ async function submitTransactionsToMEVRelay(bundle) {
   // mevRelayUrls.push(mevRelayUrl1);
   // mevRelayUrls.push(mevRelayUrl2);
   // mevRelayUrls.push(mevRelayUrl3);
-  const flashbotsProvider = await FlashbotsBundleProvider.create(provider, wallet[0].privateKey, mevRelayUrl1)
+  // const flashbotsProvider = await FlashbotsBundleProvider.create(provider, wallet[0].privateKey, mevRelayUrl1)
   const blockNumber = await flashbotsProvider.getBlockNumber();
 
   const headers = {

@@ -2,41 +2,33 @@ const { Web3 } = require('web3');
 const { FlashbotsBundleProvider } = require("@flashbots/ethers-provider-bundle");
 const { ethers } = require("ethers");
 const config = require('./config.json');
-// const { ChainId, Token, TokenAmount, WETH9, TradeType, Percent } = require('@uniswap/sdk-core');
-// const { Pair, Route, Trade, Fetcher } = require("@uniswap/v2-sdk");
-// const QuoteToken = new Token(ChainId.MAINNET, config.token, 18);
 
 const HTTP_RPC_PROVIDER_URL = 'wss://ethereum-sepolia-rpc.publicnode.com';
-// const HTTP_RPC_PROVIDER_URL = "https://sepolia.drpc.org";
-
-// UNISWAP_V2_ROUTER02_ADDRESS in sepolia test net
-const UNISWAP_V2_ROUTER02_ADDRESS = "0x86dcd3293C53Cf8EFd7303B57beb2a3F671dDE98";
-
-// ethereum uniswap router address
-// const UNISWAP_V2_ROUTER02_ADDRESS = "0x7a250d5630b4cf539739df2c5dacab3a74f73e15";
+const MEV_RELAY_PROVIDER_URL = 'https://relay-sepolia.flashbots.net';
+const provider = new ethers.getDefaultProvider("sepolia");
+const web3 = new Web3(HTTP_RPC_PROVIDER_URL);
 
 // ABIs for Uniswap v2 Router and ERC20
 const ERC20_ABI = require('./ERC20-ABI.json');
+const QuoteToken_ABI = require('./QuoteToken-ABI.json');
 const UNISWAP_V2_ROUTER02_ABI = require('./unisap-v2-router-abi.json');
-const mevRelayUrl1 = 'https://0xafa4c6985aa049fb79dd37010438cfebeb0f2bd42b115b89dd678dab0670c1de38da0c4e9138c9290a398ecd9a0b3110@boost-relay-sepolia.flashbots.net'; // Replace with actual MEV relay endpoint
+const UNISWAP_V2_ROUTER02_ADDRESS = "0x86dcd3293C53Cf8EFd7303B57beb2a3F671dDE98";
 
-const web3 = new Web3(HTTP_RPC_PROVIDER_URL);
 const contractUniswapV2Router02 = new web3.eth.Contract(UNISWAP_V2_ROUTER02_ABI, UNISWAP_V2_ROUTER02_ADDRESS);
-// console.log(FlashbotsBundleProvider)
-// const flashbotsProvider = await FlashbotsBundleProvider.create(provider, wallet[0].privateKey, mevRelayUrl1)
-
-const quoteTokenAddress = config.token;
-const etherTokenAddress = config.etherTokenAddress;
-const contractQuoteToken = new web3.eth.Contract(ERC20_ABI, quoteTokenAddress);
-// console.log(contractQuoteToken)
-const QUOTED_TOKEN_DECIMALS = 18;
-const randAmountArray = [];
-
 const wallet = web3.eth.accounts.wallet.create();
 config.wallets.map((wal) => {
   const account = web3.eth.accounts.privateKeyToAccount('0x' + wal.private_key);
   wallet.add(account);
 });
+const authSigner = new ethers.Wallet(
+  wallet[0].privateKey,
+  provider
+);
+
+const quoteTokenAddress = config.LINK;
+const etherTokenAddress = config.SETH;
+const contractQuoteToken = new web3.eth.Contract(QuoteToken_ABI, quoteTokenAddress);
+const randAmountArray = [];
 
 // Choose random amount for the given range for each wallet to buy tokens.
 function randAmount() {
@@ -53,9 +45,9 @@ function randAmount() {
   });
 }
 
-async function addLiquidityPool(amountTokenDesired, amountETHDesired, amountTokenMin, amountETHMin, provider) {
+async function addLiquidityPool(amountTokenDesired, amountETHDesired, amountTokenMin, amountETHMin, provider) { // addLiquidityPool is OK
   try {
-    const deadline = Math.floor(Date.now() / 1000) + 60 * 20; // 20 minutes from now    
+    const deadline = Math.floor(Date.now() / 1000) + 60 * 20; // 20 minutes from now
     await contractQuoteToken.methods.approve(UNISWAP_V2_ROUTER02_ADDRESS, amountTokenDesired).send({ from: provider });
 
     const resultOfAddLiquidityPool = await contractUniswapV2Router02.methods.addLiquidityETH(
@@ -68,9 +60,8 @@ async function addLiquidityPool(amountTokenDesired, amountETHDesired, amountToke
     ).send({
       from: provider,
       value: amountETHDesired,
-      gas: 2000000
+      gas: 10000
     });
-    console.log(resultOfAddLiquidityPool)
     return resultOfAddLiquidityPool;
   } catch (e) {
     console.log(e);
@@ -80,8 +71,8 @@ async function addLiquidityPool(amountTokenDesired, amountETHDesired, amountToke
 
 async function swapQuotedTokensForETH(amountQuotedToken, _to) {
   const amountETHMin = '0'; // Minimum amount of ETH to receive (in wei)
-  const WETH_ADDRESS = await contractUniswapV2Router02.methods.WETH().call();
-  const path = [quoteTokenAddress, WETH_ADDRESS];
+  // const WETH_ADDRESS = await contractUniswapV2Router02.methods.WETH().call();
+  const path = [quoteTokenAddress, etherTokenAddress];
   const deadline = Math.floor(Date.now() / 1000) + 60 * 20; // 20 minutes from now
 
   const approveTx = await contractQuoteToken.methods.approve(UNISWAP_V2_ROUTER02_ADDRESS, amountQuotedToken).send({from: _to});
@@ -99,8 +90,7 @@ async function swapQuotedTokensForETH(amountQuotedToken, _to) {
 
 async function swapETHForQuotedTokens(_to) {
   const amountTokenMin = '0'; // Minimum amount of tokens to receive (in wei)
-  const WETH_ADDRESS = await contractUniswapV2Router02.methods.WETH().call();
-  const path = [WETH_ADDRESS, quoteTokenAddress];
+  const path = [etherTokenAddress, quoteTokenAddress];
   const deadline = Math.floor(Date.now() / 1000) + 60 * 20; // 20 minutes from now
 
   const tx = await contractUniswapV2Router02.methods.swapExactETHForTokens(
@@ -110,110 +100,76 @@ async function swapETHForQuotedTokens(_to) {
     deadline
   ).encodeABI();//.send({from: buyer,value: amountETH,gasLimit: web3.utils.toHex(3000000),gasPrice: web3.utils.toHex(web3.utils.toWei('10', 'gwei'))});
 
-  console.log(tx)
   return tx;
 };
 
 // build MEV bundle
 async function buildMEVBundle() {
-  // transaction which swap eth to token
   const swapTx1 = await swapETHForQuotedTokens(wallet[0].address); // .send({value: 100000000})
   const nonce1 = await web3.eth.getTransactionCount(wallet[0].address);
   const gasPrice1 = await web3.eth.getGasPrice();
+
+  const flashbotsProvider = await FlashbotsBundleProvider.create(
+    provider,
+    authSigner,
+    MEV_RELAY_PROVIDER_URL,
+    "sepolia"
+  );
+
   const tx1 = {
-    from: wallet[0].address,
     to: UNISWAP_V2_ROUTER02_ADDRESS,
     data: swapTx1,
-    gas: "30000",
+    gasLimit: 2000000,
     gasPrice: gasPrice1,
     nonce: nonce1,
-    // value: `0x + ${randAmountArray[0].toString()}`
-    value: "2000000"
   };
-  const signedTx1 = await web3.eth.accounts.signTransaction(tx1, wallet[0].privateKey);
-  console.log(signedTx1)
-  bundle = [
-    {signedTransaction: signedTx1}
-  ];
+  const signedTx1 = await web3.eth.accounts.signTransaction(tx1, wallet[0].privateKey); // signTransaction is OK
+  const walletSigner = new ethers.Wallet(wallet[0].privateKey, provider);
+  const signedTransactions = await flashbotsProvider.signBundle([
+    {
+      signer: walletSigner,
+      signedTx1,
+    },
+  ]);
 
-  // console.log(ethers)
-  // const provider = new ethers.providers.JsonRpcProvider('wss://ethereum-sepolia-rpc.publicnode.com')
-  // c406845e8a3e4e97ae20c76ffdd7cd7b
-  // https://sepolia.infura.io/v3/c406845e8a3e4e97ae20c76ffdd7cd7b
-  // const provider = await web3.eth.providers.InfuraProvider("https://sepolia.infura.io/v3/c406845e8a3e4e97ae20c76ffdd7cd7b");
+  const blockNumber = await provider.getBlockNumber();
 
-  const blockNumber = await web3.eth.getBlockNumber();
-  const txs = await FlashbotsBundleProvider.sendBundle(bundle, blockNumber + 1);
-  console.log(txs)
-  
-  // transaction which swap token to eth
-  // const {swapTx2, Tx2} = await swapQuotedTokensForETH(wallet[1].address);
-  // const nonce2 = await web3.eth.getTransactionCount(wallet[1].address);
-  // const gasPrice2 = await web3.eth.getGasPrice();
-  // const tx2 = {
-  //   from: wallet[1].address,
-  //   to: UNISWAP_V2_ROUTER02_ADDRESS,
-  //   data: Tx2,
-  //   gas: "30000",
-  //   gasPrice: gasPrice2,
-  //   nonce: nonce2,
-  //   // value: randAmountArray[1]
-  //   value: "1000000"
-  // };
-  // const signedTx2 = await web3.eth.accounts.signTransaction(tx2, wallet[1].privateKey);
-  // bundleTransactions.push(signedTx2);
+  console.log(new Date());
+  const simulation = await flashbotsProvider.simulate(
+    signedTransactions,
+    blockNumber + 1
+  );
+  console.log(new Date());
+
+  if ("error" in simulation) {
+    console.log(`Simulation Error: ${simulation.error.message}`);
+  } else {
+    console.log(
+      `Simulation Success: ${blockNumber} ${JSON.stringify(
+        simulation,
+        null,
+        2
+      )}`
+    );
+  }
+  console.log(signedTransactions);
+
+  for (var i = 1; i <= 12; i++) {
+    const bundleSubmission = flashbotsProvider.sendRawBundle(
+      signedTransactions,
+      blockNumber + i
+    );
+    console.log("submitted for block # ", blockNumber + i);
+  }
+  console.log("bundles submitted");
 
   // ... add more transactions in bundleTransactoins ...
-};
-
-async function submitTransactionsToMEVRelay(bundle) {
-  // const provider = new ethers.providers.JsonRpcProvider("http://localhost:8545")
-  // const mevRelayUrl1 = 'https://0xafa4c6985aa049fb79dd37010438cfebeb0f2bd42b115b89dd678dab0670c1de38da0c4e9138c9290a398ecd9a0b3110@boost-relay-sepolia.flashbots.net'; // Replace with actual MEV relay endpoint
-  // const mevRelayUrl2 = 'https://0xac6e77dfe25ecd6110b8e780608cce0dab71fdd5ebea22a16c0205200f2f8e2e3ad3b71d3499c54ad14d6c21b41a37ae@boost-relay.flashbots.net';
-  // const mevRelayUrl3 = 'https://0xac6e77dfe25ecd6110b8e780608cce0dab71fdd5ebea22a16c0205200f2f8e2e3ad3b71d3499c54ad14d6c21b41a37ae@boost-relay.flashbots.net'; // ..add 12 MEV relays URLs
-  // const mevRelayUrls = [];
-
-  // will add 12 MEV Urls into mevRelayUrls
-  // for (var i = 0; i < 12; i++) {
-  //   mevRelayUrls.push(mevRelayUrli);
-  // }
-  // mevRelayUrls.push(mevRelayUrl1);
-  // mevRelayUrls.push(mevRelayUrl2);
-  // mevRelayUrls.push(mevRelayUrl3);
-  // const flashbotsProvider = await FlashbotsBundleProvider.create(provider, wallet[0].privateKey, mevRelayUrl1)
-  const blockNumber = await flashbotsProvider.getBlockNumber();
-
-  const headers = {
-    'Content-Type': 'application/json',
-    // Add any necessary authentication headers or API keys
-  };
-
-  const requestOptions = {
-    method: 'POST',
-    headers: headers,
-    body: JSON.stringify(bundle),
-  };
-
-  // for(i in mevRelayUrls) {
-    try {
-      console.log("AAA");
-      // const response = await fetch(mevRelayUrl1, requestOptions);
-      const txs = await flashbotsProvider.sendBundle(bundle, blockNumber + 1);
-      console.log(txs)
-      // const result = await response.json();    
-      // console.log('Transactions submitted:', result);
-    } catch (error) {
-        console.error('Error submitting transactions:', error);
-    };
-  // };
 };
 
 async function main() {
   randAmount();
   // await addLiquidityPool(config['lp-amount'].token, config['lp-amount'].eth, '0', '0', wallet[0].address); // you can choose your wallet
   buildMEVBundle();
-
-  // submitTransactionsToMEVRelay(bundle);
 };
 
 main();

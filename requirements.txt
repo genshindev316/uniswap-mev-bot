@@ -7,6 +7,6 @@ Details how this work.
 5- Max eth spend for each wallet is configurable.
 6- Token address is configurable.
 7- Very important feature. you can testnet network as well instead testing on direct mainnet.
-8- BY runnign the bot , it will build MEV bundle like this way [enable liq tx1, Buy tx1, buy tx2 , etc..]
+8- BY running the bot, it will build MEV bundle like this way [enable liq tx1, Buy tx1, buy tx2 , etc..]
 9- Bot will send bundle to 12 MEV relay untill bundle succeed.
 10- you will run it through terminal.

@@ -60,8 +60,9 @@ async function addLiquidityPool(amountTokenDesired, amountETHDesired, amountToke
     ).send({
       from: provider,
       value: amountETHDesired,
-      gas: 10000
+      gas: 2000000
     });
+    console.log(resultOfAddLiquidityPool);
     return resultOfAddLiquidityPool;
   } catch (e) {
     console.log(e);
@@ -131,8 +132,10 @@ async function buildMEVBundle() {
       signedTx1,
     },
   ]);
+  console.log("signedTransactions: " + signedTransactions)
 
   const blockNumber = await provider.getBlockNumber();
+  console.log("blockNumber: " + blockNumber)
 
   console.log(new Date());
   const simulation = await flashbotsProvider.simulate(
@@ -168,7 +171,7 @@ async function buildMEVBundle() {
 
 async function main() {
   randAmount();
-  // await addLiquidityPool(config['lp-amount'].token, config['lp-amount'].eth, '0', '0', wallet[0].address); // you can choose your wallet
+  await addLiquidityPool(config['lp-amount'].token, config['lp-amount'].eth, '0', '0', wallet[0].address); // you can choose your wallet
   buildMEVBundle();
 };
 
